@@ -1,6 +1,7 @@
-#include "rfm69.h"
-#include "registers.h"
-#include <stm3232l1xx_hal.h>
+#include <string.h>
+#include "include/rfm69.h"
+#include "include/registers.h"
+#include "stm32l1xx_hal.h"
 
 void set_nss(RFM69* rfm, GPIO_PinState state);
 
@@ -204,38 +205,38 @@ HAL_StatusTypeDef send_frame(RFM69* rfm, uint16_t own_address, uint16_t to_addre
   uint8_t rx_buffer[1] = { 0 };
 
   tx_buffer[0] = REG_FIFO | ADDR_WRITE;
-  result = HAL_SPI_TransmitReceive(&hspi1, tx_buffer, rx_buffer, 1, HAL_MAX_DELAY);
+  result = HAL_SPI_TransmitReceive(rfm->hspi, tx_buffer, rx_buffer, 1, HAL_MAX_DELAY);
   if(result != HAL_OK) {
     return result;
   }
 
   tx_buffer[0] = buffer_size + 3;
-  result = HAL_SPI_TransmitReceive(&hspi1, tx_buffer, rx_buffer, 1, HAL_MAX_DELAY);
+  result = HAL_SPI_TransmitReceive(rfm->hspi, tx_buffer, rx_buffer, 1, HAL_MAX_DELAY);
   if(result != HAL_OK) {
     return result;
   }
 
   tx_buffer[0] = (uint8_t) to_address;
-  result = HAL_SPI_TransmitReceive(&hspi1, tx_buffer, rx_buffer, 1, HAL_MAX_DELAY);
+  result = HAL_SPI_TransmitReceive(rfm->hspi, tx_buffer, rx_buffer, 1, HAL_MAX_DELAY);
   if(result != HAL_OK) {
     return result;
   }
 
   tx_buffer[0] = (uint8_t) own_address;
-  result = HAL_SPI_TransmitReceive(&hspi1, tx_buffer, rx_buffer, 1, HAL_MAX_DELAY);
+  result = HAL_SPI_TransmitReceive(rfm->hspi, tx_buffer, rx_buffer, 1, HAL_MAX_DELAY);
   if(result != HAL_OK) {
     return result;
   }
 
   tx_buffer[0] = control_byte;
-  result = HAL_SPI_TransmitReceive(&hspi1, tx_buffer, rx_buffer, 1, HAL_MAX_DELAY);
+  result = HAL_SPI_TransmitReceive(rfm->hspi, tx_buffer, rx_buffer, 1, HAL_MAX_DELAY);
   if(result != HAL_OK) {
     return result;
   }
 
   for(uint8_t i = 0; i < buffer_size; i++) {
     tx_buffer[0] = ((uint8_t*) buffer)[i];
-    result = HAL_SPI_TransmitReceive(&hspi1, tx_buffer, rx_buffer, 1, HAL_MAX_DELAY);
+    result = HAL_SPI_TransmitReceive(rfm->hspi, tx_buffer, rx_buffer, 1, HAL_MAX_DELAY);
     if(result != HAL_OK) {
       return result;
     }
@@ -319,14 +320,14 @@ HAL_StatusTypeDef set_encrypt(RFM69* rfm, const char* key) {
     set_nss(rfm, GPIO_PIN_RESET);
 
     uint8_t tx[1] = { REG_AESKEY1 | ADDR_WRITE };
-    result = HAL_SPI_Transmit(&hspi1, tx, 1, HAL_MAX_DELAY);
+    result = HAL_SPI_Transmit(rfm->hspi, tx, 1, HAL_MAX_DELAY);
     if(result != HAL_OK) {
       return result;
     }
 
     for(uint8_t i = 0; i < 16; i++) {
       tx[0] = key[i];
-      result = HAL_SPI_Transmit(&hspi1, tx, 1, HAL_MAX_DELAY);
+      result = HAL_SPI_Transmit(rfm->hspi, tx, 1, HAL_MAX_DELAY);
       if(result != HAL_OK) {
         return result;
       }
@@ -430,14 +431,14 @@ void set_nss(RFM69* rfm, GPIO_PinState pin_state) {
 HAL_StatusTypeDef get_reg(RFM69* rfm, uint8_t address, uint8_t *out) {
   set_nss(rfm, GPIO_PIN_RESET);
   uint8_t tx[1] = { address };
-  HAL_StatusTypeDef result = HAL_SPI_Transmit(&hspi1, tx, 1, HAL_MAX_DELAY);
+  HAL_StatusTypeDef result = HAL_SPI_Transmit(rfm->hspi, tx, 1, HAL_MAX_DELAY);
   if(result != HAL_OK) {
     set_nss(rfm, GPIO_PIN_SET);
     return result;
   }
 
   uint8_t rx[1] = { 0x00 };
-  result = HAL_SPI_Receive(&hspi1, rx, 1, HAL_MAX_DELAY);
+  result = HAL_SPI_Receive(rfm->hspi, rx, 1, HAL_MAX_DELAY);
   set_nss(rfm, GPIO_PIN_SET);
   if(result != HAL_OK) {
 
@@ -451,7 +452,7 @@ HAL_StatusTypeDef get_reg(RFM69* rfm, uint8_t address, uint8_t *out) {
 HAL_StatusTypeDef set_reg(RFM69* rfm, uint8_t address, uint8_t value) {
   set_nss(rfm, GPIO_PIN_RESET);
   uint8_t tx[2] = { address | ADDR_WRITE, value};
-  HAL_StatusTypeDef result = HAL_SPI_Transmit(&hspi1, tx, 2, HAL_MAX_DELAY);
+  HAL_StatusTypeDef result = HAL_SPI_Transmit(rfm->hspi, tx, 2, HAL_MAX_DELAY);
   set_nss(rfm, GPIO_PIN_SET);
 
   return result;
@@ -474,7 +475,7 @@ void interrupt_handler(RFM69* rfm) {
     set_nss(rfm, GPIO_PIN_RESET);
 
     uint8_t tx[1] = { REG_FIFO & 0x7F };
-    result = HAL_SPI_Transmit(&hspi1, tx, 1, HAL_MAX_DELAY);
+    result = HAL_SPI_Transmit(rfm->hspi, tx, 1, HAL_MAX_DELAY);
     if(result != HAL_OK) {
       set_mode(rfm, RfModeRx);
       return;
@@ -482,7 +483,7 @@ void interrupt_handler(RFM69* rfm) {
 
     uint8_t rx[1] = { 0x00 };
 
-    result = HAL_SPI_Receive(&hspi1, rx, 1, HAL_MAX_DELAY);
+    result = HAL_SPI_Receive(rfm->hspi, rx, 1, HAL_MAX_DELAY);
     if(result != HAL_OK) {
       set_mode(rfm, RfModeRx);
       return;
@@ -490,21 +491,21 @@ void interrupt_handler(RFM69* rfm) {
     uint8_t payload_length = rx[0];
     payload_length = payload_length > 66 ? 66 : payload_length;
 
-    result = HAL_SPI_Receive(&hspi1, rx, 1, HAL_MAX_DELAY);
+    result = HAL_SPI_Receive(rfm->hspi, rx, 1, HAL_MAX_DELAY);
     if(result != HAL_OK) {
       set_mode(rfm, RfModeRx);
       return;
     }
     uint16_t target_id = rx[0];
 
-    result = HAL_SPI_Receive(&hspi1, rx, 1, HAL_MAX_DELAY);
+    result = HAL_SPI_Receive(rfm->hspi, rx, 1, HAL_MAX_DELAY);
     if(result != HAL_OK) {
       set_mode(rfm, RfModeRx);
       return;
     }
     uint16_t sender_id = rx[0];
 
-    result = HAL_SPI_Receive(&hspi1, rx, 1, HAL_MAX_DELAY);
+    result = HAL_SPI_Receive(rfm->hspi, rx, 1, HAL_MAX_DELAY);
     if(result != HAL_OK) {
       set_mode(rfm, RfModeRx);
       return;
@@ -524,7 +525,7 @@ void interrupt_handler(RFM69* rfm) {
 
     // Transfer the data in FIFO to memory
     for(uint8_t idx = 0; idx < rfm->datalen; idx++) {
-      result = HAL_SPI_Receive(&hspi1, rx, 1, HAL_MAX_DELAY);
+      result = HAL_SPI_Receive(rfm->hspi, rx, 1, HAL_MAX_DELAY);
       if(result != HAL_OK) {
         set_mode(rfm, RfModeRx);
         return;

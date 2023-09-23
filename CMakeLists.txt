@@ -3,9 +3,9 @@ project(stm32_rfm69 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
 
-file(GLOB_RECURSE SOURCES "src/*.c")
-
 include_directories(.)
 
-add_library(stm32_rfm69 ${SOURCES})
-include_directories(./include)
+add_library(stm32_rfm69
+    src/rfm69.c
+    include/rfm69.h
+)

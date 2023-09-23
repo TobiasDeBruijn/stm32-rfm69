@@ -4,7 +4,7 @@
 #include "stdint.h"
 #include "stdbool.h"
 
-#include <stm32l1xx_hal_conf.h>
+#include "stm32l1xx_hal.h"
 
 #define RfMaxDataLen 61
 
@@ -37,8 +37,8 @@ HAL_StatusTypeDef set_encrypt(RFM69* rfm, const char* key);
 HAL_StatusTypeDef set_power_level(RFM69* rfm, uint8_t power_level);
 HAL_StatusTypeDef set_high_power(RFM69* rfm);
 HAL_StatusTypeDef init(RFM69* rfm, uint8_t network_id);
-HAL_StatusTypeDef set_reg(uint8_t address, uint8_t value);
-HAL_StatusTypeDef get_reg(uint8_t address, uint8_t *out);
+HAL_StatusTypeDef set_reg(RFM69* rfm, uint8_t address, uint8_t value);
+HAL_StatusTypeDef get_reg(RFM69* rfm, uint8_t address, uint8_t *out);
 void interrupt_handler(RFM69* rfm);
 HAL_StatusTypeDef send(RFM69* rfm, uint16_t own_address, uint16_t to_address, const void* buffer, uint8_t buffer_size);
 HAL_StatusTypeDef send_frame(RFM69* rfm, uint16_t own_address, uint16_t to_address, const void* buffer, uint8_t buffer_size);
